@@ -2,128 +2,214 @@
 # Tuples (Y, X) since grid[rows][cols]
 
 class Block(object):
-    def __init__(self, g, s, o,  name):
-        self.goal = g
-        self.start = s
-        self.obstacle = o
+    def __init__(self, name):
+        self.obstacle = 0
         self.tag = 0
         self.name = name
-    
-    def setH(self, val):
-        self.H = val
-    def setK(self, val):
-        self.K = val
-    def setB(self, val):
-        self.B = val
-    def setTag(self, val):
-        self.Tag = val
-    def setGoal(self, val):
-        self.goal = val
-    def setStart(self, val):
-        self.start = val
-    def setObstacle(self, val):
-        self.obstacle = val
+        self.H = None
+        self.K = None
+        self.B = None
 
-width = 6
-length = 6
-goalIndex = (5, 5)
-startIndex = (0, 0)
-obstacles = [(2, 2), (2, 3), (2, 4), (2, 5)]
+class DStar(object):
+    def __init__(self, g, s, w, l, o):
+        self.goal = g
+        self.start = s
+        self.obstacles = o
+        self.open = []
+        self.cmax = 100000
+        self.grid = []
+        self.robot = s
+        self.width = w
+        self.length = l
+        self.path = []
 
-def initialize():
-    grid = [[Block(0, 0, 0, (y, x)) for x in range(width)] for y in range(length)]
+    def initialize(self):
+        self.grid = [[Block((y, x)) for x in range(self.width)] for y in range(self.length)]
 
-    grid[goalIndex[0]][goalIndex[1]].setGoal(1)
-    grid[goalIndex[0]][goalIndex[1]].setH(0)
-    grid[goalIndex[0]][goalIndex[1]].setK(0)
-    grid[startIndex[0]][startIndex[1]].setStart(1)
-    for entry in obstacles:
-        grid[entry[0]][entry[1]].setObstacle(1)
+        self.grid[self.goal[0]][self.goal[1]].H = 0
+        self.grid[self.goal[0]][self.goal[1]].K = 0
+        for entry in self.obstacles:
+            self.grid[entry[0]][entry[1]].obstacle = 1
 
-    open = []
-    open.append(grid[goalIndex[0]][goalIndex[1]])
-    grid[goalIndex[0]][goalIndex[1]].setTag(1)
+        self.grid[self.goal[0]][self.goal[1]].tag = 1
+        self.open.append(self.grid[self.goal[0]][self.goal[1]])
 
-    return open, grid
+    def sortList(self):
+        for num in range(len(self.open)-1, 0, -1):
+            for i in range(num):
+                if self.open[i].K > self.open[i+1].K:
+                    temp = self.open[i]
+                    self.open[i] = self.open[i+1]
+                    self.open[i+1] = temp
 
-def sortList(list):
-    for num in range(len(list)-1, 0, -1):
-        for i in range(passnum):
-            if list[i].K > list[i+1].K:
-                temp = list[i].K
-                list[i].setK(list[i+1].K)
-                list[i+1].setK(temp)
+    def neighbor(self, current, new):
+        n = []
+        newN = []
+        
+        # Up 1
+        if (current[0]-1) >= 0:
+            n.append((current[0]-1, current[1]))
+            if self.grid[current[0]-1][current[1]].tag == 0:
+                newN.append((current[0]-1, current[1]))
+            # Up 1 right
+            if (current[1]+1) < self.width:
+                n.append((current[0]-1, current[1]+1))
+                if self.grid[current[0]-1][current[1]+1].tag == 0:
+                    newN.append((current[0]-1, current[1]+1))
+            # Up 1 left
+            if (current[1]-1) >= 0:
+                n.append((current[0]-1, current[1]-1))
+                if self.grid[current[0]-1][current[1]-1].tag == 0:
+                    newN.append((current[0]-1, current[1]-1))
 
-def neighbor(current):
-    n = []
-    diag = []
-    
-    # Up 1
-    if (current[0]-1) >= 0:
-        n.append((current[0]-1, current[1]))
-        # UP 1 right
-        if (current[1]+1) < width:
-            diag.append((current[0]-1, current[1]+1))
-        # Up 1 left
+        # Down 1
+        if (current[0]+1) < self.length:
+            n.append((current[0]+1, current[1]))
+            if self.grid[current[0]+1][current[1]].tag == 0:
+                newN.append((current[0]+1, current[1]))
+            # Down 1 right
+            if (current[1]+1) < self.width:
+                n.append((current[0]+1, current[1]+1))
+                if self.grid[current[0]+1][current[1]+1].tag == 0:
+                    newN.append((current[0]+1, current[1]+1))
+            # Down 1 left
+            if (current[1]-1) >= 0:
+                n.append((current[0]+1, current[1]-1))
+                if self.grid[current[0]+1][current[1]-1].tag == 0:
+                    newN.append((current[0]+1, current[1]-1))
+
+        # Left
         if (current[1]-1) >= 0:
-            diag.append((current[0]-1, current[1]-1))
+            n.append((current[0], current[1]-1))
+            if self.grid[current[0]][current[1]-1].tag == 0:
+                newN.append((current[0], current[1]-1))
 
-    # Down 1
-    if (current[0]+1) < width:
-        n.append((current[0]+1, current[1]))
-        # Down 1 right
-        if (current[1]+1) < width:
-            diag.append((current[0]+1, current[1]+1))
-        # Down 1 left
-        if (current[1]-1) >= 0:
-            diag.append((current[0]+1, current[1]-1))
+        # Right
+        if (current[1]+1) < self.width:
+            n.append((current[0], current[1]+1))
+            if self.grid[current[0]][current[1]+1].tag == 0:
+                newN.append((current[0], current[1]+1))
 
-    # Left
-    if (current[1]-1) >= 0:
-        n.append((current[0], current[1]-1))
-
-    # Right
-    if (current[1]+1) < width:
-        n.append((current[0], current[1]+1))
-
-    return n, diag
-
-
-cur = goalIndex
-prev = goalIndex
-openList, grid = initialize()
-
-while(prev == startIndex):
-    openList.pop(0)
-    neigh, diagonal = neighbor(cur)
-
-    for val in neigh:
-        if grid[val[0]][val[1]].tag == 0:
-            openList.append(grid[val[0]][val[1]])
-            grid[val[0]][val[1]].setTag(1)
-            grid[val[0]][val[1]].setB(cur)
+        if new == True:
+            return newN
             
-            if grid[val[0]][val[1]].obstacle == 0:
-                grid[val[0]][val[1]].setH(grid[cur[0]][cur[1]].H + 1)
-                grid[val[0]][val[1]].setK(grid[cur[0]][cur[1]].H + 1)
-            else:
-                grid[val[0]][val[1]].setH(10000)
-                grid[val[0]][val[1]].setK(10000)
+        return n
 
-    for d in diagonal:
-        if grid[val[0]][val[1]].tag == 0:
-            openList.append(grid[val[0]][val[1]])
-            grid[val[0]][val[1]].setTag(1)
-            grid[val[0]][val[1]].setB(cur)
-            if grid[val[0]][val[1]].obstacle == 0:
-                grid[val[0]][val[1]].setH(grid[cur[0]][cur[1]].H + 1.4)
-                grid[val[0]][val[1]].setK(grid[cur[0]][cur[1]].H + 1.4)
-            else:
-                grid[val[0]][val[1]].setH(10000)
-                grid[val[0]][val[1]].setK(10000)
+    def c(self, X ,Y):
+        if Y.obstacle == 1:
+            return self.cmax
+        elif X.name[0] == Y.name[0] or X.name[1] == Y.name[1]:
+            return 1
+        else:
+            return 1.4
 
-    sortList(openList)
-    prev = cur
-    cur = openList[1].name
+    def insert(self, point, hnew):
+        hnew = min(self.cmax, hnew)
+        if point.tag == 0:
+            point.K = hnew
+        elif point.tag == 1:
+            point.K = min(hnew, point.K)
+        else:
+            point.K = min(hnew, point.H)
+        point.H = hnew
+        point.tag = 1
+        self.open.append(point)
+        self.sortList()
+        return point
 
+    def backpointerList(self):
+        cur = self.grid[self.robot[0]][self.robot[1]]
+        while cur.name != self.goal:
+            self.path.append(cur.name)
+            print(cur.name)
+            cur = self.grid[cur.B[0]][cur.B[1]]
+        if len(self.path) == 0:
+            print("No Possible Path")
 
+        self.path.append(cur.name)
+        return self.path
+        
+    def processState(self, new):
+
+        cur = self.open.pop(0)
+        kold = cur.K
+        self.grid[cur.name[0]][cur.name[1]].tag = 2
+
+        n = self.neighbor(cur.name, new)
+
+        if kold < cur.H:
+            for entry in n:
+                Y = self.grid[entry[0]][entry[1]]
+                if Y.H <= kold and cur.H >=Y.H + self.c(Y, cur):
+                    self.grid[cur.name[0]][cur.name[1]].B = Y.name
+                    self.grid[cur.name[0]][cur.name[1]].H = Y.H + self.c(Y, cur)
+        elif kold == cur.H:
+            for entry in n:
+                Y = self.grid[entry[0]][entry[1]]
+                if (Y.tag == 0 or (Y.B == cur.name and Y.H != cur.H + self.c(cur, Y)) or
+                        (Y.B!= cur.name and Y.H > cur.H + self.c(cur, Y))):
+                        Y.B = cur.name
+                        self.grid[entry[0]][entry[1]] = self.insert(Y, cur.H + self.c(cur, Y))
+        else:
+            for entry in n:
+                Y = self.grid[entry[0]][entry[1]]
+                if Y.tag == 0 or (Y.B == cur.name and Y.H != cur.H + self.c(cur, Y)):
+                    Y.B = cur.name
+                    self.grid[entry[0]][entry[1]] = self.insert(Y, cur.H + self.c(cur, Y))
+                else:
+                    if Y.B!= cur.name and Y.H > cur.H + self.c(cur, Y):
+                        self.grid[cur.name[0]][cur.name[1]] = self.insert(cur, cur.H)
+                    else:
+                        if (Y.B!= cur.name and cur.H > Y.H + self.c(Y, cur) and Y.tag == 2
+                                and Y.H > kold):
+                            self.grid[entry[0]][entry[1]] = self.insert(Y, Y.H)
+
+        if (len(self.open) == 0):
+            return -1
+        return self.open[0].K
+
+    def initPlan(self):
+        self.initialize()
+        while 1:
+            kmin = self.processState(True)
+            if kmin == -1 or self.grid[self.start[0]][self.start[1]].tag == 2:
+                break
+        return self.backpointerList()
+
+    def modifyCost(self, X):
+        X = self.grid[X[0]][X[1]]
+        if X.tag == 2 and X.obstacle == 1:
+            self.grid[X.name[0]][X.name[1]] = self.insert(X, self.cmax)
+        elif X.tag == 2:
+            self.grid[X.name[0]][X.name[1]] = self.insert(X, X.H)
+        
+    
+    def prepareRepair(self):
+        n = self.neighbor(self.robot, False)
+        toEdit = []
+        for elem in n:
+            if self.grid[elem[0]][elem[1]].obstacle == 0 and (elem in self.obstacles):
+                self.grid[elem[0]][elem[1]].obstacle = 1
+                toEdit.append(elem)
+                toEdit.extend(self.neighbor(elem, False))
+        for e in toEdit:
+            self.modifyCost(e)
+
+    def repairReplan(self):
+        while 1:
+            kmin = self.processState(False)
+            if kmin == -1 or self.grid[self.start[0]][self.start[1]].tag == 2:
+                break
+        return self.backpointerList()
+
+    def run2(self):
+        index = 0
+        while self.robot != self.goal:
+            self.prepareRepair()
+            path = self.repairReplan()
+            if len(path) == 0:
+                return -1
+            index += 1
+            self.robot = path[index]
+        return path
+            
